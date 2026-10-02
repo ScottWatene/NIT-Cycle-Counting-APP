@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>Cycle Count</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f6f7f9;--card:#fff;--tx:#1b2430;--mut:#667085;--bd:#d0d5dd;--ac:#1f3864;--ok:#d1f2dc;--wn:#ffe9b0;--bad:#ffd3d3;--inp:#fff7d6}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111418;--card:#1b2028;--tx:#e8ecf1;--mut:#98a2b3;--bd:#3a424e;--ac:#7aa2ff;--ok:#1d4a30;--wn:#5a4510;--bad:#5c2323;--inp:#3a3418}}
+:root[data-theme="dark"]{--bg:#111418;--card:#1b2028;--tx:#e8ecf1;--mut:#98a2b3;--bd:#3a424e;--ac:#7aa2ff;--ok:#1d4a30;--wn:#5a4510;--bad:#5c2323;--inp:#3a3418}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.4 Arial,Helvetica,sans-serif}
+header{padding:12px 16px;background:var(--ac);color:#fff}header h1{margin:0;font-size:18px}
+:root[data-theme="dark"] header,@media(prefers-color-scheme:dark){}
+nav{display:flex;gap:4px;padding:8px 12px;flex-wrap:wrap}nav button{border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:8px 14px;border-radius:6px;cursor:pointer;font:inherit}
+nav button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+main{padding:0 12px 24px;max-width:1100px;margin:auto}.card{background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:12px;margin-bottom:12px}
+h2{font-size:15px;margin:0 0 8px}label{display:block;font-size:12px;color:var(--mut);margin:6px 0 2px}
+input,select,textarea{font:inherit;color:var(--tx);background:var(--inp);border:1px solid var(--bd);border-radius:4px;padding:5px 7px}textarea{width:100%;min-height:110px;font-family:monospace;font-size:12px}
+.row{display:flex;gap:12px;flex-wrap:wrap}.row>div{flex:1;min-width:130px}.btn{background:var(--ac);color:#fff;border:0;padding:9px 16px;border-radius:6px;cursor:pointer;font:inherit}.btn.sec{background:var(--card);color:var(--tx);border:1px solid var(--bd)}
+.tw{overflow-x:auto}table{border-collapse:collapse;width:100%}th,td{border:1px solid var(--bd);padding:4px 6px;text-align:left;white-space:nowrap}th{background:var(--ac);color:#fff;font-size:12px}
+td input{width:70px}.s-C{background:var(--ok)}.s-P{background:var(--wn)}.bad{background:var(--bad);font-weight:bold}.kpi{display:flex;gap:8px;flex-wrap:wrap}.kpi div{flex:1;min-width:100px;border:1px solid var(--bd);border-radius:8px;padding:8px;text-align:center}.kpi b{display:block;font-size:20px}
+.hide{display:none}.mut{color:var(--mut);font-size:12px}#pr{display:none}
+@media print{body>*:not(#pr){display:none!important}#pr{display:block!important;color:#000;background:#fff}#pr td{height:26px;color:#000}#pr th{background:#ddd;color:#000}}
+</style></head><body>
+<header><h1 id="ttl">Cycle Count</h1></header>
+<nav id="nav"><button data-t="s" class="on">1 Setup</button><button data-t="c">2 Count</button><button data-t="d">3 Dashboard</button><button data-t="x">4 Export</button></nav>
+<main>
+<section id="s"><div class="card"><h2>Settings</h2><div class="row">
+<div><label>Site name</label><input id="site" value="Site_Name"></div>
+<div><label>Count by</label><select id="mode"><option>LOC</option><option>SKU</option></select></div>
+<div><label>Count date</label><input id="date" type="date"></div>
+<div><label>Accuracy target %</label><input id="tgt" type="number" step="0.1" value="99.5"></div></div></div>
+<div class="card"><h2>1. Locations (or SKUs) to count — one per line</h2><textarea id="items" placeholder="CE03400A&#10;CK05500B"></textarea></div>
+<div class="card"><h2>2. System stock — paste from Excel (Location, SKU, Description, Qty, Unit cost)</h2><textarea id="stock" placeholder="CE03400A&#9;4710-20-A&#9;Widget 20mm blue&#9;120&#9;3.45"></textarea></div>
+<button class="btn" id="build">Build count lines</button> <button class="btn sec" id="reset">New count (clear all)</button> <span class="mut" id="bmsg"></span></section>
+<section id="c" class="hide"><div class="card"><div class="row"><div><label>Show</label><select id="flt"><option value="all">All lines</option><option value="p1">Pending 1st</option><option value="n2">Needs 2nd / pending</option><option value="n3">Needs 3rd / pending</option><option value="var">Variances only</option></select></div>
+<div><label>Print blank sheet for</label><select id="rnd"><option value="1">1st count</option><option value="2">2nd count</option><option value="3">3rd count</option></select></div>
+<div style="align-self:end"><button class="btn sec" id="prt">Print</button></div></div>
+<p class="mut">Type counts in the yellow boxes. 2nd / 3rd boxes unlock only when a recount is needed.</p></div>
+<div class="card tw"><table id="tb"></table></div></section>
+<section id="d" class="hide"></section>
+<section id="x" class="hide"><div class="card"><h2>Results for History (completed lines, CSV)</h2><textarea id="csv" readonly></textarea><p><button class="btn" id="cp">Copy to clipboard</button> <span class="mut" id="cpm"></span></p><p class="mut">Paste into your own History sheet or file. Columns: date, site, key, location, sku, description, system qty, final physical, variance, hit, value, rounds.</p></div></section>
+</main><div id="pr"></div>
+<script>
+const $=id=>document.getElementById(id);let S={items:'',stock:'',lines:[]};
+const num=v=>v===''||v==null||isNaN(+v)?null:+v;
+function save(){try{S.site=$('site').value;S.mode=$('mode').value;S.date=$('date').value;S.tgt=$('tgt').value;S.items=$('items').value;S.stock=$('stock').value;localStorage.setItem('cc1',JSON.stringify(S))}catch(e){}}
+function load(){try{const j=localStorage.getItem('cc1');if(j)S=JSON.parse(j)}catch(e){}$('site').value=S.site||'Site_Name';$('mode').value=S.mode||'LOC';$('date').value=S.date||new Date().toISOString().slice(0,10);$('tgt').value=S.tgt||99.5;$('items').value=S.items||'';$('stock').value=S.stock||'';$('ttl').textContent=($('site').value)+' — Cycle Count'}
+function D(l){const s=l.sys,c1=l.c1,c2=l.c2,c3=l.c3;const v1=c1==null?null:c1-s;const n2=c1==null?'p1':v1===0?'no':'yes';
+const n3=n2==='p1'?'':n2!=='yes'?'no':c2==null?'p2':(c2===c1||c2===s)?'no':'yes';
+const st=c1==null?'Pending 1st':(n2==='yes'&&c2==null)?'Pending 2nd':(n3==='yes'&&c3==null)?'Pending 3rd':'Complete';
+let fin=null,v=null;if(st==='Complete'){fin=n3==='yes'?c3:n2==='yes'?c2:c1;v=fin-s}
+return{n2,n3,st,fin,v,r:1+(n2==='yes'?1:0)+(n3==='yes'?1:0)}}
+function build(){save();const mode=S.mode;const items=[...new Set(S.items.split(/\r?\n/).map(x=>x.trim()).filter(Boolean))];const set=new Set(items);
+const rows=S.stock.split(/\r?\n/).filter(r=>r.trim()).map(r=>r.split(r.includes('\t')?'\t':',').map(x=>x.trim()));
+const lines=[],have=new Set();rows.forEach(r=>{const key=mode==='LOC'?r[0]:r[1];if(set.has(key)){have.add(key);lines.push({loc:r[0]||'',sku:r[1]||'',desc:r[2]||'',sys:num(r[3])||0,cost:num(r[4])||0,c1:null,c2:null,c3:null,rm:''})}});
+items.forEach(k=>{if(!have.has(k))lines.push({loc:mode==='LOC'?k:'',sku:mode==='SKU'?k:'',desc:mode==='LOC'?'(empty location - confirm nothing is stored)':'(no system stock - confirm nothing on hand)',sys:0,cost:0,c1:null,c2:null,c3:null,rm:''})});
+S.lines=lines;save();$('bmsg').textContent=lines.length+' count lines built from '+items.length+' items.';render()}
+function render(){const f=$('flt').value;let h='<tr><th>#</th><th>Location</th><th>SKU</th><th>Description</th><th>System</th><th>1st</th><th>2nd</th><th>3rd</th><th>Status</th><th>Final</th><th>Var</th><th>Remark</th></tr>';
+S.lines.forEach((l,i)=>{const d=D(l);const ok=f==='all'||(f==='p1'&&d.st==='Pending 1st')||(f==='n2'&&d.n2==='yes')||(f==='n3'&&d.n3==='yes')||(f==='var'&&d.v)  ;if(!ok)return;
+h+=`<tr data-i="${i}"><td>${i+1}</td><td>${l.loc}</td><td>${l.sku}</td><td>${l.desc}</td><td>${l.sys}</td><td><input data-k="c1" type="number" value="${l.c1??''}"></td><td><input data-k="c2" type="number" value="${l.c2??''}"></td><td><input data-k="c3" type="number" value="${l.c3??''}"></td><td class="st"></td><td class="fn"></td><td class="vr"></td><td><input data-k="rm" style="width:120px" value="${l.rm}"></td></tr>`});
+$('tb').innerHTML=h;document.querySelectorAll('#tb tr[data-i]').forEach(r=>paint(r));dash();csv()}
+function paint(r){const l=S.lines[r.dataset.i],d=D(l);const[,,,,,i1,i2,i3]=r.children;i2.firstChild.disabled=d.n2!=='yes';i3.firstChild.disabled=d.n3!=='yes';i2.style.background=d.n2==='yes'&&l.c2==null?'#ffc000':'';i3.style.background=d.n3==='yes'&&l.c3==null?'#ffc000':'';
+const st=r.querySelector('.st');st.textContent=d.st;st.className='st '+(d.st==='Complete'?'s-C':'s-P');r.querySelector('.fn').textContent=d.fin??'';const vr=r.querySelector('.vr');vr.textContent=d.v??'';vr.className='vr'+(d.v?' bad':'')}
+function dash(){const L=S.lines,c=L.map(D),done=L.filter((l,i)=>c[i].st==='Complete');const t=+S.tgt/100||.995,tol=.1;
+const cnt=s=>L.filter((l,i)=>c[i].st===s).length;const grp=k=>{const m={};L.forEach((l,i)=>{if(c[i].st==='Complete'&&l[k])m[l[k]]=(m[l[k]]||0)+c[i].v});const a=Object.values(m);return[a.length,a.filter(x=>x===0).length]};
+const sys=done.reduce((a,l)=>a+l.sys,0),net=done.reduce((a,l,)=>a+(l.c1==null?0:0),0);let nv=0,av=0,val=0;L.forEach((l,i)=>{if(c[i].st==='Complete'){nv+=c[i].v;av+=Math.abs(c[i].v);val+=c[i].v*l.cost}});
+const res=a=>a==null?'':a>=t?'Achieved':a>=t*(1-tol)?'Near miss':'Fail';const cl=r=>r==='Achieved'?'s-C':r==='Near miss'?'s-P':r==='Fail'?'bad':'';
+const [su,sm]=grp('sku'),[lu,lm]=grp('loc'),lh=done.filter((l,i)=>D(l).v===0).length;
+const M=[['SKU accuracy',su,sm,su?sm/su:null],['Location accuracy',lu,lm,lu?lm/lu:null],['Line accuracy',done.length,lh,done.length?lh/done.length:null],['Net qty accuracy (variance '+nv+')',sys,nv,sys?1-Math.abs(nv/sys):null],['Abs qty accuracy (variance '+av+')',sys,av,sys?1-av/sys:null]];
+const top=L.map((l,i)=>({l,v:c[i].v,f:c[i].fin})).filter(x=>x.v).sort((a,b)=>Math.abs(b.v)-Math.abs(a.v)).slice(0,10);
+$('d').innerHTML=`<div class="card"><div class="kpi"><div><b>${L.length}</b>Lines</div><div><b>${done.length}</b>Complete</div><div><b>${cnt('Pending 1st')}</b>Pending 1st</div><div><b>${cnt('Pending 2nd')}</b>Pending 2nd</div><div><b>${cnt('Pending 3rd')}</b>Pending 3rd</div><div><b>${L.length?Math.round(100*done.length/L.length):0}%</b>Progress</div></div></div>
+<div class="card tw"><h2>Accuracy vs target ${(t*100).toFixed(1)}% (completed lines)</h2><table><tr><th>Metric</th><th>Total</th><th>Matched / var</th><th>Accuracy</th><th>Result</th></tr>${M.map(m=>`<tr><td>${m[0]}</td><td>${m[1]}</td><td>${m[2]}</td><td>${m[3]==null?'':(m[3]*100).toFixed(1)+'%'}</td><td class="${cl(res(m[3]))}">${res(m[3])}</td></tr>`).join('')}</table><p class="mut">Net variance value: ${val.toFixed(2)}</p></div>
+<div class="card tw"><h2>Top variances to investigate</h2><table><tr><th>Location</th><th>SKU</th><th>System</th><th>Final</th><th>Variance</th></tr>${top.map(x=>`<tr><td>${x.l.loc}</td><td>${x.l.sku}</td><td>${x.l.sys}</td><td>${x.f}</td><td class="bad">${x.v}</td></tr>`).join('')||'<tr><td colspan=5 class="mut">No variances yet</td></tr>'}</table></div>`}
+function csv(){const k=S.mode==='LOC'?'loc':'sku';const q=s=>'"'+String(s).replace(/"/g,'""')+'"';$('csv').value=S.lines.filter(l=>D(l).st==='Complete').map(l=>{const d=D(l);return[S.date,S.site,l[k],l.loc,l.sku,l.desc,l.sys,d.fin,d.v,d.v===0?1:0,(d.v*l.cost).toFixed(2),d.r].map(q).join(',')}).join('\n')}
+function print_(){const r=+$('rnd').value;const rows=S.lines.map((l,i)=>({l,i,d:D(l)})).filter(x=>r===1||(r===2&&x.d.n2==='yes')||(r===3&&x.d.n3==='yes'));
+$('pr').innerHTML=`<h2>${S.site} — Cycle Count — round ${r} — ${S.date}</h2><p>Counter: ____________ Start: ______ End: ______</p><table><tr><th>#</th><th>Location</th><th>SKU</th><th>Description</th><th>Count Qty</th><th>Remarks</th></tr>${rows.map((x,n)=>`<tr><td>${n+1}</td><td>${x.l.loc}</td><td>${x.l.sku}</td><td>${x.l.desc}</td><td style="width:90px"></td><td style="width:140px"></td></tr>`).join('')}</table>`;window.print()}
+document.addEventListener('input',e=>{const t=e.target;if(t.dataset.k){const r=t.closest('tr'),l=S.lines[r.dataset.i];l[t.dataset.k]=t.dataset.k==='rm'?t.value:num(t.value);document.querySelectorAll('#tb tr[data-i]').forEach(paint);dash();csv();save()}else if(t.closest('#s'))save()});
+$('nav').onclick=e=>{const t=e.target.dataset.t;if(!t)return;['s','c','d','x'].forEach(x=>{$(x).classList.toggle('hide',x!==t)});[...$('nav').children].forEach(b=>b.classList.toggle('on',b.dataset.t===t));if(t==='c')render()};
+$('build').onclick=build;$('flt').onchange=render;$('prt').onclick=print_;
+$('reset').onclick=()=>{if(confirm('Clear everything and start a new count?')){S={items:'',stock:'',lines:[]};try{localStorage.removeItem('cc1')}catch(e){}load();render()}};
+$('cp').onclick=async()=>{try{await navigator.clipboard.writeText($('csv').value);$('cpm').textContent='Copied'}catch(e){$('csv').select();$('cpm').textContent='Press Ctrl+C to copy'}};
+load();render();
+</script></body></html>
